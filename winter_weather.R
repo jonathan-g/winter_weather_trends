@@ -81,7 +81,7 @@ read_station_data <- function(station, datasetid, datatypeid) {
   data <- tibble()
   years <- seq(year(min(station$mindate)), year(max(station$maxdate)))
   for (year in years) {
-    message("Getting data for year ", year)
+    message("Getting ", datatypeid, " data for ", station$name, " for year ", year)
     this_year <- get_one_year(station$id, datasetid, datatypeid, year)
     data <- data %>% bind_rows(this_year)
     if (year < max(years)) Sys.sleep(1)
@@ -121,9 +121,13 @@ get_winter_snow <- function(snow_record) {
     winters
 }
 
-plot_cold_days <- function(temp_record, threshold_f = 0.0, baseline = FALSE) {
+plot_cold_days <- function(temp_record, threshold_f = 0.0,
+                           baseline = FALSE, location_name = NULL) {
   plot_color = "#3A5FCD"
   cold_days <- get_cold_days(temp_record, threshold_f)
+  plot_title = ifelse(is.null(location_name),
+                      "Cold ways in winters",
+                      str_c("Cold days in ", location_name, " winters"))
 
   baseline_level = cold_days %>% filter(year >= 1949 & year < 1979) %>%
     summarize(cold_days = mean(cold_days))
@@ -135,17 +139,21 @@ plot_cold_days <- function(temp_record, threshold_f = 0.0, baseline = FALSE) {
     p <- p + geom_hline(color = plot_color, yintercept = baseline_level$cold_days)
 
   p <- p +
-    scale_x_continuous(expand=c(0,0), breaks = seq(0, 2050, 10)) +
+    scale_x_continuous(expand=c(0,0), breaks = seq(1800, 2050, 10)) +
     scale_y_continuous(expand = c(0,0), limits = c(0,max(cold_days$cold_days) + 0.5)) +
     labs(x = "Year",
          y = bquote("# days below " * .(round(threshold_f, 1)) * degree * F),
-         title = "Cold days in Nashville winters")
+         title = plot_title)
   p
 }
 
-plot_snow <- function(snow_record, baseline = FALSE) {
+plot_snow <- function(snow_record, baseline = FALSE, location_name = NULL) {
   plot_color = "#3A5FCD"
   snow <- get_winter_snow(snow_record)
+  plot_title = ifelse(is.null(location_name),
+                      "Snow fall in winters",
+                      str_c("Snow fall in ", location_name, " winters"))
+
 
   baseline_level = snow %>% filter(year >= 1949 & year < 1979) %>%
     summarize(snow = mean(snow))
@@ -157,14 +165,15 @@ plot_snow <- function(snow_record, baseline = FALSE) {
     p <- p + geom_hline(color = plot_color, yintercept = baseline_level$snow)
 
   p <- p +
-    scale_x_continuous(expand=c(0,0), breaks = seq(0, 2050, 10)) +
+    scale_x_continuous(expand=c(0,0), breaks = seq(1800, 2050, 10)) +
     scale_y_continuous(expand = c(0,0), limits = c(0,max(snow$snow) + 1)) +
     labs(x = "Year", y = "Inches of snow",
-         title = "Snow fall in Nashville winters")
+         title = plot_title)
   p
 }
 
 get_data <- function() {
   temp_data <<- read_station_data(best_station, "GHCND", "TMIN")
   snow_data <<- read_station_data(best_station, "GHCND", "SNOW")
+  theme_set(theme_bw(base_size = 12))
 }

@@ -23,9 +23,11 @@ my_location_code <- fipscodes %>%
 #
 # Get stations in the selected county, and sort by length of record.
 #
-stations = ncdc_stations(datasetid = "GHCND", locationid=my_location_code, limit = 100) %$% data %>%
-  as.tibble() %>% mutate(mindate = ymd(mindate), maxdate = ymd(maxdate),
-                         datespan = maxdate - mindate) %>%
+stations = ncdc_stations(datasetid = "GHCND", locationid=my_location_code,
+                         limit = 100) %$% data %>%
+  as_tibble() %>%
+  mutate(mindate = ymd(mindate), maxdate = ymd(maxdate),
+         datespan = maxdate - mindate) %>%
   arrange(desc(datespan), mindate)
 
 #
@@ -54,7 +56,8 @@ get_one_year <- function(stationid, datasetid, datatypeid, year, limit = 366) {
   while(records < goal) {
     start.time = now()
     message("Getting records ", offset, "-", offset + limit - 1)
-    new_data <- ncdc(stationid = stationid, datasetid = datasetid, datatypeid = datatypeid,
+    new_data <- ncdc(stationid = stationid, datasetid = datasetid,
+                     datatypeid = datatypeid,
                      startdate = start_date, enddate = end_date,
                      offset = offset, limit = limit)
     if (is.null(new_data$meta$totalCount)) {
@@ -99,8 +102,8 @@ get_cold_days <- function(temp_record, threshold_f = 0.0) {
     mutate(date = as_datetime(date), month = month(date),
            year = year(date) - ifelse(month <= 6, 1, 0),
            tmin = (9.0 / 5.0) * (value / 10.0) + 32.0) %>%
-    group_by(year) %>% summarize(cold_days = sum(tmin < threshold_f)) %>%
-    ungroup() %>%
+    group_by(year) %>% summarize(cold_days = sum(tmin < threshold_f),
+                                 .groups = "drop") %>%
     filter(year > min(year))
   winters
 }
@@ -115,8 +118,7 @@ get_winter_snow <- function(snow_record) {
     mutate(date = as_datetime(date), month = month(date),
            year = year(date) - ifelse(month <= 6, 1, 0),
            snow = value / 25.4) %>%
-    group_by(year) %>% summarize(snow = sum(snow)) %>%
-    ungroup() %>%
+    group_by(year) %>% summarize(snow = sum(snow), .groups = "drop") %>%
     filter(year > min(year))
     winters
 }
